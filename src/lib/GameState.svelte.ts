@@ -4,7 +4,6 @@ import type { Settings } from './schemas/Settings';
 
 export class GameState {
     board: Tile[][] = $state([]);
-    currentPlayer = $state(0);
     gameStatus: GameStatus = $state({status: "playing"})
     gameOver = $state(false);
     gameWon = $state(false)
@@ -14,6 +13,9 @@ export class GameState {
     flags: number = 0
     visited: Set<string>
     constructor(settings: Settings) {
+        this.gameStatus = {status: "playing"}
+        this.gameOver = false;
+        this.gameWon = false
         //init board
         this.board = Array.from({length: settings.rows}, () => Array.from({length: settings.cols}, () => ({ value: "0", status: "hidden" }) satisfies Tile));
         this.rows = settings.rows;
@@ -51,8 +53,8 @@ export class GameState {
     }
 
     addBomb(bombs: Set<string>) {
-        const row = Math.floor(Math.random() * 9)
-        const col = Math.floor(Math.random() * 9)
+        const row = Math.floor(Math.random() * this.rows)
+        const col = Math.floor(Math.random() * this.cols)
         const coordString = `${row},${col}`
         bombs.add(coordString)
     }
@@ -73,18 +75,14 @@ export class GameState {
             // console.log(`calling revealTile on tile ${row}, ${col}`)
 
             this.board[row][col].status = "shown"
-            const settings = {
-                "cols": this.cols,
-                "rows": this.rows,
-                bombs: 10
-            }
+            
             if (this.board[row][col].value === "💣") {
                 this.gameStatus = {status: "lost"}
             } else if (this.board[row][col].value === "") {
 
                 for (let rowModifier = -1; rowModifier <= 1; rowModifier ++) {
                     for (let colModifier = -1; colModifier <= 1; colModifier ++) {
-                        if (row + rowModifier >= 0 && row + rowModifier < settings.rows && col + colModifier >= 0 && col + colModifier < settings.cols && !(colModifier == 0 && rowModifier == 0)) {
+                        if (row + rowModifier >= 0 && row + rowModifier < this.rows && col + colModifier >= 0 && col + colModifier < this.cols && !(colModifier == 0 && rowModifier == 0)) {
                             this.revealTile(row+rowModifier, col+colModifier)
                         }
                     }
