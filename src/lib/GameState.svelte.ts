@@ -4,18 +4,14 @@ import type { Settings } from './schemas/Settings';
 
 export class GameState {
     board: Tile[][] = $state([]);
-    gameStatus: GameStatus = $state({status: "playing"})
-    gameOver = $state(false);
-    gameWon = $state(false)
+    gameStatus: GameStatus = $state({status: "ready"})
     rows: number;
     cols: number;
     bombs: number;
     flags: number = 0
     visited: Set<string>
     constructor(settings: Settings) {
-        this.gameStatus = {status: "playing"}
-        this.gameOver = false;
-        this.gameWon = false
+        this.gameStatus = {status: "ready"}
         //init board
         this.board = Array.from({length: settings.rows}, () => Array.from({length: settings.cols}, () => ({ value: "0", status: "hidden" }) satisfies Tile));
         this.rows = settings.rows;
@@ -34,7 +30,6 @@ export class GameState {
         let rowValue = 0;
         // calculate the tiles for their numbers 
         for (let row = 0; row < settings.rows; row++) {
-
             for (let col = 0; col < settings.cols; col++) {
                 if (this.board[row][col].value !== "💣") {
                     // check all adjacent tiles and num of bombs adjacent
@@ -60,11 +55,15 @@ export class GameState {
     }
     
     revealTile(row: number, col: number) {
+
         if (this.board[row][col].status === "flag") {
             this.flagTile(row, col)
             return 
         }
         if (!this.visited.has(`${row},${col}`)) {
+
+            // start the timer with this state
+            this.gameStatus.status = "playing"
             this.visited.add(`${row},${col}`)
 
             if (this.visited.size === this.rows * this.cols - this.bombs) {
