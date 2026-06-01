@@ -20,17 +20,17 @@
     let gameState = $state(new GameState(settings))
     let errorMessage: string = $state("");
     let gameOver: boolean = $derived(gameState.gameStatus.status === "won" || gameState.gameStatus.status === "lost");
+    let timer: number
+    let timeElapsed: number = $state(0);
+
     let reset = () => {
-        gameOver = false;
         errorMessage = ""
         gameState = new GameState(settings)
         flags = 0
         clearInterval(timer)
+        timer = 0
         timeElapsed = 0
     }
-    let timer: number
-    let timeElapsed: number = $state(0);
-
     $effect(() => {
         const gameStatus = gameState.gameStatus.status
         if (gameStatus === "playing" && !timer) {
@@ -38,6 +38,7 @@
         }
         if (gameStatus === "won" || gameStatus === "lost") {
             clearInterval(timer)
+            timer = 0
         }
     })
 
@@ -145,6 +146,25 @@
 
 <h1>Welcome to TicTacToe</h1>
 
+<button
+onclick={() => {reset()}}>
+Reset
+</button>
+<div>
+
+<button
+onclick={() => {changeDifficulty('easy')}}>
+Easy
+</button>
+<button
+onclick={() => {changeDifficulty('medium')}}>
+Medium
+</button>
+<button
+onclick={() => {changeDifficulty('hard')}}>
+Hard
+</button>
+</div>
 {#if gameOver}
     <div class="game-over">Game over!</div>
 {/if}
@@ -187,25 +207,6 @@ onclick={() => {printBoardState()}}>
 print board state
 </button>
 <hr/>
-<button
-onclick={() => {reset()}}>
-Reset
-</button>
-<div>
-
-<button
-onclick={() => {changeDifficulty('easy')}}>
-Easy
-</button>
-<button
-onclick={() => {changeDifficulty('medium')}}>
-Medium
-</button>
-<button
-onclick={() => {changeDifficulty('hard')}}>
-Hard
-</button>
-</div>
 
 <style>
     .gameHeader {
