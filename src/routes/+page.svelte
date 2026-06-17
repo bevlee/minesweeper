@@ -1,6 +1,9 @@
 <script lang="ts">
+	import Profile from '$lib/components/Profile.svelte';
 	import { GameState } from '$lib/GameState.svelte';
+	import { emptyProfile } from '$lib/profile';
 	import type { Difficulty } from '$lib/schemas/Difficulty';
+	import { UserProfileSchema, type GameStats, type UserProfile } from '$lib/schemas/UserProfile';
 
 	let difficulty: Difficulty = $state('easy');
 	let gameOverSound: HTMLAudioElement = new Audio('/audio/boom.mp3');
@@ -18,6 +21,7 @@
 		cols: 9,
 		bombs: 10
 	};
+
 	let flags: number = $state(0);
 	let gameState = $state(new GameState(settings));
 	let gameOver: boolean = $derived(
@@ -26,6 +30,17 @@
 	let won: boolean = $derived(gameState.gameStatus.status === 'won');
 	let timer: number;
 	let timeElapsed: number = $state(0);
+
+    // get the player stats from localStorage
+    const existingStats: string | null = localStorage.getItem("gameStats")
+    let userStats: UserProfile = $state(emptyProfile())
+    if (existingStats !== null) {
+        const result  = UserProfileSchema.safeParse(JSON.parse(existingStats))
+        if (result.success) {
+            userStats = result.data
+        }
+    }
+
 
 	let reset = () => {
 		gameState = new GameState(settings);
@@ -191,6 +206,8 @@
 			{/each}
 		</div>
 	</div>
+	<Profile {...userStats} />
+
 </div>
 
 <style>
