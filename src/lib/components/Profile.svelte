@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { ACHIEVEMENTS } from '$lib/achievements/catalog';
-	import type { AchievementId, GameStats } from '$lib/schemas/UserProfile';
+	import type { AchievementId, DifficultyStats } from '$lib/schemas/profile';
 
 	let {
 		easy,
@@ -8,9 +8,9 @@
 		hard,
 		achievements
 	}: {
-		easy: GameStats;
-		medium: GameStats;
-		hard: GameStats;
+		easy: DifficultyStats;
+		medium: DifficultyStats;
+		hard: DifficultyStats;
 		achievements: AchievementId[];
 	} = $props();
 

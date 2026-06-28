@@ -1,6 +1,6 @@
 
-import * as z from "zod"; 
- 
+import * as z from "zod";
+
 export const TileValue = z.union([
   z.string().regex(/^[1-8]$/),
   z.literal("💣"),
@@ -9,7 +9,7 @@ export const TileValue = z.union([
 
 export type TileValue  = z.infer<typeof TileValue>
 
-export const TileSchema = z.object({ 
+export const TileSchema = z.object({
   value: TileValue,
   status: z.enum(["flag", "hidden", "shown", "bomb"]),
 });

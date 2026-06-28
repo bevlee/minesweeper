@@ -1,5 +1,5 @@
-import * as z from "zod"; 
- 
+import * as z from "zod";
+
 export const GameStatusSchema = z.discriminatedUnion("status", [
     z.object({ status: z.literal("ready") }),
     z.object({ status: z.literal("playing") }),

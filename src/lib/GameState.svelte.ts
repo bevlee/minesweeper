@@ -1,14 +1,17 @@
-import type { Tile } from './schemas';
-import type { GameStatus } from './schemas/GameStatus';
-import type { Settings } from './schemas/Settings';
+import type { Difficulty, GameStatus, Settings, Tile } from './schemas/game';
+
 
 export class GameState {
     board: Tile[][] = $state([]);
     gameStatus: GameStatus = $state({status: "ready"})
     rows: number;
     cols: number;
-    bombs: number;
-    flags: number = 0
+    bombsLeftCount: number;
+    bombs: Set<string>;
+    flags: number = $state(0)
+    leftClicks: number = 0
+    rightClicks: number = 0
+    chords: number = 0
     visited: Set<string>
     constructor(settings: Settings) {
         this.gameStatus = {status: "ready"}
@@ -16,14 +19,14 @@ export class GameState {
         this.board = Array.from({length: settings.rows}, () => Array.from({length: settings.cols}, () => ({ value: "0", status: "hidden" }) satisfies Tile));
         this.rows = settings.rows;
         this.cols = settings.cols;
-        this.bombs = settings.bombs;
+        this.bombsLeftCount = settings.bombs;
+        this.bombs = new Set<string>;
         this.visited = new Set<string>()
 
-        let bombs: Set<string> = new Set();
-        while (bombs.size < settings.bombs) {
-            this.addBomb(bombs)
+        while (this.bombs.size < settings.bombs) {
+            this.addBomb()
         }
-        for (const bomb of bombs) {
+        for (const bomb of this.bombs) {
             const [r,c] = bomb.split(",").map(Number)
             this.board[r][c].value = "💣"
         }
@@ -47,29 +50,33 @@ export class GameState {
         }
     }
 
-    addBomb(bombs: Set<string>) {
+    addBomb() {
         const row = Math.floor(Math.random() * this.rows)
         const col = Math.floor(Math.random() * this.cols)
-        const coordString = `${row},${col}`
-        bombs.add(coordString)
+        this.bombs.add(`${row},${col}`)
     }
     
     revealTile(row: number, col: number) {
 
         if (this.board[row][col].status === "flag") {
             this.flagTile(row, col)
-            return 
         }
         if (!this.visited.has(`${row},${col}`)) {
-
+            this.leftClicks++
             // start the timer with this state
             this.gameStatus.status = "playing"
             this.visited.add(`${row},${col}`)
 
-            if (this.visited.size === this.rows * this.cols - this.bombs) {
+            if (this.visited.size === this.rows * this.cols - this.bombsLeftCount) {
 
                 this.gameStatus = {status: "won"}
-                console.log("game is won")
+
+                return {isGameOver: true, gameStats: {
+                    leftClicks: this.leftClicks,
+                    rightClicks: this.rightClicks,
+                    chords: this.chords
+
+                }}
             }
             // console.log(`calling revealTile on tile ${row}, ${col}`)
 
@@ -90,7 +97,9 @@ export class GameState {
         } else {
             // been visited already
             // do a scan of nearby flags
+            // also called a chord
             if (/^[1-8]$/.test(this.board[row][col].value)) {
+                this.chords++
 
                 const tileValue = Number(this.board[row][col].value);
                 let nearbyFlags = 0
@@ -116,9 +125,12 @@ export class GameState {
                 }
             }
         }
+
+        return {isGameOver: false, gameStats: null}
     }
 
     flagTile(row: number, col: number) {
+        this.rightClicks++
         if (this.board[row][col].status == "shown") {
             return
         }
@@ -131,4 +143,16 @@ export class GameState {
             this.flags++
         }
     }
-}   
+
+    getResult(timeElapsed: number, difficulty: Difficulty): GameResult | null {
+        if (this.gameStatus.status !== "won" && this.gameStatus.status !== "lost") {
+            return null
+        }
+        return {
+            won: this.gameStatus.status === "won",
+            timeElapsed,
+            flagsPlaced: this.flags,
+            difficulty
+        }
+    }
+}

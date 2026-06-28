@@ -1,5 +1,5 @@
-import * as z from "zod"; 
- 
+import * as z from "zod";
+
 export const SettingsSchema = z.object({
     rows: z.number(),
     cols: z.number(),

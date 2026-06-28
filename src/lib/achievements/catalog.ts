@@ -1,9 +1,9 @@
-import type { AchievementId, GameStats } from "$lib/schemas/UserProfile";
+import type { AchievementId, DifficultyStats } from "$lib/schemas/profile";
 
 export const ACHIEVEMENTS: Record<AchievementId, {
   title: string;
   description: string;
-  check?: (stats: GameStats) => boolean;
+  check?: (stats: DifficultyStats) => boolean;
   targetValue?: number;
 }> = {
   completedWithoutFlags: {
