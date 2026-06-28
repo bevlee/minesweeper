@@ -1,9 +1,10 @@
 <script lang="ts">
 	import Profile from '$lib/components/Profile.svelte';
 	import { GameState } from '$lib/GameState.svelte';
-	import { emptyProfile } from '$lib/profile';
-	import type { Difficulty } from '$lib/schemas/Difficulty';
-	import { UserProfileSchema, type GameStats, type UserProfile } from '$lib/schemas/UserProfile';
+	import { applyGameResult, emptyProfile } from '$lib/profile';
+	import { type Difficulty, type GameResult } from '$lib/schemas/game';
+	import type { GameInteractions } from '$lib/schemas/game/GameInteractions';
+	import { UserProfileSchema, type UserProfile } from '$lib/schemas/profile';
 
 	let difficulty: Difficulty = $state('easy');
 	let gameOverSound: HTMLAudioElement = new Audio('/audio/boom.mp3');
@@ -22,32 +23,30 @@
 		bombs: 10
 	};
 
-	let flags: number = $state(0);
 	let gameState = $state(new GameState(settings));
-	let gameOver: boolean = $derived(
-		gameState.gameStatus.status === 'won' || gameState.gameStatus.status === 'lost'
-	);
-	let won: boolean = $derived(gameState.gameStatus.status === 'won');
+	let gameOver: boolean = $derived(gameState.gameStatus.status === "won" || gameState.gameStatus.status === "lost" )
+	let flags: number = $derived(gameState.flags);
 	let timer: number;
 	let timeElapsed: number = $state(0);
+	let resultRecorded = $state(false);
 
     // get the player stats from localStorage
     const existingStats: string | null = localStorage.getItem("gameStats")
-    let userStats: UserProfile = $state(emptyProfile())
+    let userProfile: UserProfile = $state(emptyProfile())
     if (existingStats !== null) {
         const result  = UserProfileSchema.safeParse(JSON.parse(existingStats))
         if (result.success) {
-            userStats = result.data
+            userProfile = result.data
         }
     }
 
 
 	let reset = () => {
 		gameState = new GameState(settings);
-		flags = 0;
 		clearInterval(timer);
 		timer = 0;
 		timeElapsed = 0;
+		resultRecorded = false;
 	};
 
 	$effect(() => {
@@ -62,6 +61,26 @@
 			else playBoom();
 		}
 	});
+
+	$effect(() => {
+		if (gameOver && !resultRecorded) {
+			resultRecorded = true;
+			const interactions: GameInteractions = {
+				leftClicks: gameState.leftClicks,
+				rightClicks: gameState.rightClicks,
+				undoFlags: gameState.leftClicks,
+				chords: gameState.chords,
+				duplicateChords: gameState.leftClicks
+			}
+			const gameResult: GameResult = {
+				won: gameState.gameStatus.status === "won",
+				difficulty: difficulty,
+				timeElapsed: timeElapsed,
+				interactions: interactions
+			}
+			updateUserStats(gameResult)
+		}
+	})
 
 	$effect(() => {
 		const onVisibility = () => {
@@ -99,14 +118,12 @@
 	};
 
 	let leftClickCell = (row: number, col: number) => {
-		if (gameOver) return;
-		gameState.revealTile(row, col);
+		if (gameOver) {return};
+		gameState.revealTile(row, col)
 	};
 
 	let rightClickCell = (row: number, col: number) => {
-		if (gameOver) return;
 		gameState.flagTile(row, col);
-		flags = gameState.flags;
 	};
 
 	const pad3 = (n: number) => String(Math.max(0, Math.min(999, n))).padStart(3, '0');
@@ -127,27 +144,17 @@
 		'7': 'text-ms-n7',
 		'8': 'text-ms-n8'
 	};
+
+
+	function updateUserStats(gameResult: GameResult) {
+		userProfile = applyGameResult(userProfile, gameResult)
+		console.log(userProfile)
+		localStorage.setItem("gameStats", JSON.stringify(userProfile))
+	}
 </script>
 
 <div class="flex min-h-screen flex-col items-center gap-6 p-6">
 	<h1 class="text-3xl font-bold tracking-tight text-ms-text">Minesweeper</h1>
-
-	<!-- HUD -->
-	<div class="hud">
-		<div class="counter" aria-label="Time elapsed">
-			<span class="counter-icon">⏱</span>
-			<span class="counter-digits">{pad3(timeElapsed)}</span>
-		</div>
-
-		<button class="face-btn" onclick={reset} aria-label="Reset game">
-			<span class="text-3xl leading-none">{resetFace}</span>
-		</button>
-
-		<div class="counter" aria-label="Bombs remaining">
-			<span class="counter-icon">💣</span>
-			<span class="counter-digits">{pad3(gameState.bombs - flags)}</span>
-		</div>
-	</div>
 
 	<!-- Difficulty picker -->
 	<div class="segmented">
@@ -173,6 +180,23 @@
 			Hard
 		</button>
 	</div>
+	<!-- HUD -->
+	<div class="hud">
+		<div class="counter" aria-label="Time elapsed">
+			<span class="counter-icon">⏱</span>
+			<span class="counter-digits">{pad3(timeElapsed)}</span>
+		</div>
+
+		<button class="face-btn" onclick={reset} aria-label="Reset game">
+			<span class="text-3xl leading-none">{resetFace}</span>
+		</button>
+
+		<div class="counter" aria-label="Bombs remaining">
+			<span class="counter-icon">💣</span>
+			<span class="counter-digits">{pad3(gameState.bombsLeftCount - flags)}</span>
+		</div>
+	</div>
+
 
 	<!-- Board -->
 	<div class="board-card">
@@ -182,11 +206,13 @@
 					{@const shown = cell.status === 'shown'}
 					{@const flagged = cell.status === 'flag'}
 					{@const isBomb = cell.value === '💣'}
-					{@const isNumber = shown && /^[1-8]$/.test(cell.value)}
+					{@const isNumber = /^[1-8]$/.test(cell.value)}
+					{@const wrongFlag = gameOver && flagged && !isBomb}
+					{@const won = gameState.gameStatus.status === "won"}
 					<button
 						class="cell {shown ? 'cell-shown' : 'cell-hidden'} {shown && isBomb
 							? 'cell-bomb'
-							: ''}"
+							: ''} {wrongFlag ? 'cell-wrong-flag' : ''}"
 						onclick={() => leftClickCell(rowIndex, colIndex)}
 						oncontextmenu={(e) => {
 							e.preventDefault();
@@ -194,11 +220,11 @@
 						}}
 						aria-label={`row ${rowIndex + 1}, column ${colIndex + 1}`}
 					>
-						{#if flagged}
+						{#if flagged || (won && isBomb)}
 							<span>🚩</span>
-						{:else if shown && isBomb}
+						{:else if isBomb && (shown || gameOver) }
 							<span>💣</span>
-						{:else if isNumber}
+						{:else if shown && isNumber}
 							<span class={`font-bold ${numberColor[cell.value]}`}>{cell.value}</span>
 						{/if}
 					</button>
@@ -206,7 +232,7 @@
 			{/each}
 		</div>
 	</div>
-	<Profile {...userStats} />
+	<Profile {...userProfile} />
 
 </div>
 
@@ -368,6 +394,12 @@
 	}
 	.cell-bomb {
 		background-color: #fecaca;
+	}
+	.cell-wrong-flag {
+		background-color: #fca5a5;
+		box-shadow:
+			inset 2px 2px 4px var(--color-ms-dark),
+			inset -2px -2px 4px var(--color-ms-light);
 	}
 
 	.modal-card {
