@@ -66,6 +66,7 @@ export class GameState {
             // start the timer with this state
             this.gameStatus.status = "playing"
             this.visited.add(`${row},${col}`)
+            this.board[row][col].status = "shown"
 
             if (this.visited.size === this.rows * this.cols - this.bombsLeftCount) {
 
@@ -80,7 +81,6 @@ export class GameState {
             }
             // console.log(`calling revealTile on tile ${row}, ${col}`)
 
-            this.board[row][col].status = "shown"
             
             if (this.board[row][col].value === "💣") {
                 this.gameStatus = {status: "lost"}
