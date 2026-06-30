@@ -40,7 +40,7 @@
 					<td>{stats.gamesPlayed}</td>
 					<td>{stats.gamesWon}</td>
 					<td>{stats.fastestTime}</td>
-					<td>{stats.averageTime}</td>
+					<td>{stats.averageTime?.toFixed(2) ?? ''}</td>
 				</tr>
 			{/each}
 		</tbody>
