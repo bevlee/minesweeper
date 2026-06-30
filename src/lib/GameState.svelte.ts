@@ -71,6 +71,7 @@ export class GameState {
             if (this.visited.size === this.rows * this.cols - this.bombsLeftCount) {
 
                 this.gameStatus = {status: "won"}
+                this.flags = this.bombs.size
 
                 return {isGameOver: true, gameStats: {
                     leftClicks: this.leftClicks,
